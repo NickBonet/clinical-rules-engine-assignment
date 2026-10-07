@@ -14,11 +14,9 @@ from app.domain import Enrollment, PatientContext, Task
 
 
 class Repository(Protocol):
-    # --- facts (read) -----------------------------------------------------
     def patient_ids(self) -> list[str]: ...
     def load_patient_context(self, patient_id: str) -> PatientContext: ...
 
-    # --- derived state (write) -------------------------------------------
     def replace_derived_state(
         self, patient_id: str, enrollments: list[Enrollment], tasks: list[Task]
     ) -> None:
@@ -26,7 +24,6 @@ class Repository(Protocol):
         transaction), so a retried job yields identical state."""
         ...
 
-    # --- derived state (read, for the API) -------------------------------
     def list_enrollments(self) -> list[Enrollment]: ...
     def list_tasks(
         self,

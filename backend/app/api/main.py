@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.domain import TaskType
-from app.pipeline.bootstrap import build_repository
+from app.pipeline.bootstrap import build_sqlite_repository, open_postgres_repository
 
 # Role -> task types that role may see.
 _ROLE_VISIBILITY: dict[str, tuple[str, ...]] = {
@@ -32,7 +32,12 @@ class Role(StrEnum):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    repo, as_of = build_repository(settings.data_dir, settings.as_of)
+    # postgres: read already-ingested state (run `ingest --backend postgres` first).
+    # sqlite: ingest + evaluate into an ephemeral in-memory DB on startup.
+    if settings.backend == "postgres":
+        repo, as_of = open_postgres_repository()
+    else:
+        repo, as_of = build_sqlite_repository(settings.data_dir, settings.as_of)
     app.state.repo = repo
     app.state.as_of = as_of
     yield

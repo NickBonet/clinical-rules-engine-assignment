@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from datetime import date
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -15,7 +16,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="APP_", env_file=".env", extra="ignore")
 
-    # Postgres via docker-compose; SQLite is a valid fallback (see README).
+    # "sqlite" runs with an ephemeral in-memory SQLite DB (no setup); "postgres"
+    # uses the persistent Postgres DB. Both go through the one SQL repository.
+    backend: Literal["sqlite", "postgres"] = "sqlite"
+
+    # Used only when backend is set to postgres. Host
+    # is "localhost" for a host-run backend and the "db" service name inside the
+    # compose network; override with APP_DATABASE_URL accordingly.
     database_url: str = "postgresql+psycopg://app:app@localhost:5432/clinical"
 
     data_dir: Path = REPO_ROOT / "data"

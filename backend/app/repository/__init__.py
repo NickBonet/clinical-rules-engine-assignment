@@ -1,9 +1,10 @@
-"""Storage layer. Depends on `app.domain`; swappable behind the `Repository` Protocol.
+"""Storage layer. Depends on `app.domain`; accessed behind the `Repository` Protocol.
 
-TODO: add a SQLAlchemy/Postgres implementation (`sql.py`) alongside `memory.py`.
+`SqlRepository` (SQLAlchemy) is the single implementation, used for both the
+ephemeral in-memory SQLite backend and the persistent Postgres backend.
 """
 
 from app.repository.base import Repository
-from app.repository.memory import InMemoryRepository
+from app.repository.sql import SqlRepository
 
-__all__ = ["InMemoryRepository", "Repository"]
+__all__ = ["Repository", "SqlRepository"]
