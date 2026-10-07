@@ -1,5 +1,4 @@
-"""CSV ingestion: parse the provided files into normalized domain facts and
-assemble one PatientContext per patient."""
+"""Load and normalize CSV data into one PatientContext per patient."""
 
 from __future__ import annotations
 
@@ -9,7 +8,7 @@ from pathlib import Path
 
 from app.domain import Diagnosis, Encounter, LabResult, Patient, PatientContext
 
-# Raw lab test_name -> canonical name the rules read against.
+# Map CSV lab names to the names used by the rules.
 _TEST_NAME_MAP = {"HbA1c": "A1C"}
 
 

@@ -15,14 +15,11 @@ def make_engine(url: str | None = None) -> Engine:
 
 
 def make_sqlite_engine() -> Engine:
-    """In-process, in-memory SQLite shared across sessions.
+    """Create an in-memory SQLite database shared across sessions.
 
-    A plain `sqlite://` URL gives each new connection its own empty database, so
-    with per-operation sessions a write and a later read would hit different DBs.
-    `StaticPool` pins a single shared connection (hence `check_same_thread=False`
-    for FastAPI's threadpool), making one ephemeral database live for the process.
-    Foreign keys are enabled per connection for parity with Postgres (SQLite
-    leaves them off by default).
+    StaticPool keeps sessions on the same connection so they see the same data.
+    Allow access from FastAPI's worker threads and enable foreign key checks,
+    which SQLite disables by default.
     """
     engine = create_engine(
         "sqlite+pysqlite://",
@@ -39,8 +36,7 @@ def make_sqlite_engine() -> Engine:
 
 
 def make_session_factory(engine: Engine) -> sessionmaker[Session]:
-    # expire_on_commit=False: domain objects are built from row attributes before
-    # the session closes, so we never touch expired attributes post-commit.
+    # Keep loaded row attributes available after a commit.
     return sessionmaker(bind=engine, expire_on_commit=False)
 
 

@@ -1,8 +1,7 @@
-"""Resolve the single reference ("as-of") date threaded through all evaluation.
+"""Choose one evaluation date for the run, using an override or the latest lab date.
 
-Default = max(lab result_date): the latest lab guarantees at least one A1C inside
-the 180-day window while leaving later encounters as "future" (see architecture
-doc). An explicit override wins.
+For the supplied data, the latest lab date keeps A1C results in the 180-day window
+and leaves later encounters as upcoming visits.
 """
 
 from __future__ import annotations

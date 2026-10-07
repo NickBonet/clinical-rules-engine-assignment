@@ -1,4 +1,4 @@
-"""Primary Care Wellness eligibility, risk stratification, and visit needs."""
+"""Primary Care Wellness rules and visit needs."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from datetime import date
 from app.domain import Need, PatientContext
 from app.engine.programs.base import ProgramRule, _visit
 
-# Chronic-conditions group for the Primary Care Wellness high-priority check.
-# ICD-10 prefixes; G47.3 is intentionally the 4-char family, the rest are roots.
+# Diagnosis prefixes that trigger High Priority.
+# G47.3 covers the sleep apnea family; the other prefixes are ICD-10 roots.
 WELLNESS_CHRONIC_PREFIXES: tuple[str, ...] = (
     "E10", "E11", "I10", "E78", "J45", "N18", "I25", "E03", "G47.3", "M81",
 )

@@ -1,7 +1,7 @@
 """CLI entrypoint: `uv run ingest [--as-of YYYY-MM-DD] [--backend sqlite|postgres]`.
 
-Rebuilds derived state from the CSVs and prints a summary. With `sqlite` (default)
-this is an ephemeral dry run; with `postgres` the same call populates the database.
+Loads CSVs, evaluates rules, and prints a summary. SQLite backend runs in memory, ephemeral;
+Postgres backend persists the results to the database.
 """
 
 from __future__ import annotations

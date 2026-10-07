@@ -1,9 +1,4 @@
-"""Pure evaluation core: program rules, orchestration, and task generation.
-
-Imports only `app.domain` — never repository, pipeline, or api. This keeps the
-core serializable and side-effect-free (and physically unable to touch I/O),
-which is what makes it safe to run under a future TaskIQ worker unchanged.
-"""
+"""Program evaluation and task generation."""
 
 from app.engine.programs import (
     DiabetesManagementProgram,

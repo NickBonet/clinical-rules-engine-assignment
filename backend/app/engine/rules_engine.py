@@ -1,4 +1,4 @@
-"""Orchestrates the configured programs for one patient."""
+"""Evaluate the configured programs for one patient."""
 
 from __future__ import annotations
 
@@ -13,10 +13,7 @@ class RulesEngine:
         self.programs = programs if programs is not None else default_programs()
 
     def evaluate_patient(self, ctx: PatientContext, as_of: date) -> tuple[Enrollment, ...]:
-        """Return one Enrollment per program the patient is eligible for.
-
-        Programs are evaluated independently, as a patient can appear in several.
-        """
+        """Return an enrollment for each eligible program, evaluated independently."""
         enrollments: list[Enrollment] = []
         for program in self.programs:
             if not program.is_eligible(ctx, as_of):

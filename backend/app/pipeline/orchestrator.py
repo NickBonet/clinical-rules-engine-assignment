@@ -1,9 +1,6 @@
-"""The orchestration seam: load facts -> evaluate -> persist (idempotent).
+"""Load each patient's data, evaluate rules, and save enrollments and tasks.
 
-`run_patient` is deliberately shaped like a future TaskIQ task — serializable
-args (patient_id + as_of), an injected repository, idempotent write. Today it is
-called in a loop by `run_all`; later it becomes a `@broker.task` with the same
-signature, and `run_all` becomes a fan-out.
+Patients are processed independently, so the loop can later move to a worker queue.
 """
 
 from __future__ import annotations

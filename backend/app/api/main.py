@@ -1,8 +1,7 @@
-"""FastAPI app. Serves patient/task data with specialty, task-type, and role
-filters. Role visibility boils down to what task types are mapped for each role in `_ROLE_VISIBILITY`.
+"""Patient and task endpoints, with specialty, task-type, and role filters.
 
-On startup, the app builds the repository from the CSVs (in-memory currently, Postgres pending). Business
-logic stays in the engine/pipeline, while routes only deal with query parameters and response shaping.
+SQLite loads CSV data at startup; Postgres reads previously ingested results.
+Rule evaluation stays in the engine and pipeline, not the routes.
 """
 
 from __future__ import annotations
@@ -18,7 +17,7 @@ from app.config import settings
 from app.domain import TaskType
 from app.pipeline.bootstrap import build_sqlite_repository, open_postgres_repository
 
-# Role -> task types that role may see.
+# Task types visible to each role.
 _ROLE_VISIBILITY: dict[str, tuple[str, ...]] = {
     "scheduler": (TaskType.SCHEDULING,),
     "clinical": (TaskType.SCHEDULING, TaskType.REFERRAL),
@@ -32,8 +31,7 @@ class Role(StrEnum):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # postgres: read already-ingested state (run `ingest --backend postgres` first).
-    # sqlite: ingest + evaluate into an ephemeral in-memory DB on startup.
+    # Postgres requires an earlier ingest; SQLite builds its data at startup.
     if settings.backend == "postgres":
         repo, as_of = open_postgres_repository()
     else:
@@ -67,7 +65,7 @@ def health() -> dict:
 
 @app.get("/patients")
 def list_patients() -> list[dict]:
-    """Patients with their program enrollments, risk tiers, and active tasks."""
+    """List patients with their enrollments, risk tiers, and tasks."""
     repo = app.state.repo
     tasks_by_patient: dict[str, list] = {}
     for t in repo.list_tasks():
@@ -100,7 +98,7 @@ def list_tasks(
     specialty: Annotated[str | None, Query()] = None,
     task_type: Annotated[TaskType | None, Query()] = None,
 ) -> list[dict]:
-    """Filter by specialty and/or task type, scoped to the role's visibility."""
+    """List tasks visible to the role, with optional specialty and type filters."""
     repo = app.state.repo
     tasks = repo.list_tasks(
         specialty=specialty,

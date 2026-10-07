@@ -1,4 +1,4 @@
-"""Shared program contract and visit-need construction."""
+"""Common program interface and helper for visit needs."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ def _visit(program: str, specialty: str, cadence_days: int) -> Need:
 
 
 class ProgramRule:
-    """Base class. Subclasses implement the three pure steps."""
+    """Interface for checking eligibility, assigning risk, and building care needs."""
 
     name: str
 

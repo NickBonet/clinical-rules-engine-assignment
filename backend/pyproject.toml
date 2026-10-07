@@ -20,7 +20,7 @@ dev = [
 ]
 
 [project.scripts]
-# `uv run ingest` rebuilds derived state from the CSVs; `uv run api` serves.
+# `uv run ingest` loads CSV data and rebuilds enrollments and tasks.
 ingest = "app.pipeline.cli:main"
 
 [tool.ruff]

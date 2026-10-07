@@ -1,12 +1,7 @@
-"""SQLAlchemy-backed Repository — the single storage implementation.
+"""SQL storage for SQLite and Postgres.
 
-Implements the `Repository` Protocol (see base.py) for both the in-memory SQLite
-backend and the Postgres backend, so the pipeline, API, and `run_patient` seam
-are backend-agnostic. Each operation runs in its own short-lived
-session (via an injected factory) so concurrent API reads and the per-patient
-write transaction never share session state. The `write_facts` / `record_run` /
-`latest_as_of` module helpers cover the ingest write-path and the API read-path
-that the Protocol itself doesn't express.
+Each repository call uses its own session and returns domain dataclasses.
+The module helpers reload patient data and track pipeline runs.
 """
 
 from __future__ import annotations
@@ -90,8 +85,7 @@ class SqlRepository:
     def replace_derived_state(
         self, patient_id: str, enrollments: list[Enrollment], tasks: list[Task]
     ) -> None:
-        # Delete-then-insert for this patient in one transaction: the unit of
-        # idempotency, so a retried job yields identical state.
+        # Replace both sets of rows together so retries do not create duplicates.
         with self._session_factory() as session:
             session.execute(
                 delete(EnrollmentRow).where(EnrollmentRow.patient_id == patient_id)
@@ -153,21 +147,18 @@ class SqlRepository:
         ]
 
 
-# Ingest write-path and API read-path helpers (outside the Protocol).
+# Helpers for ingestion and API startup.
 def write_facts(session: Session, contexts: dict[str, PatientContext]) -> None:
-    """Full refresh of the fact tables from freshly-ingested contexts.
+    """Replace stored patient data with the latest CSV data and commit.
 
-    Truncate-reload (delete children before parents for the FKs) keeps facts an
-    exact mirror of the current CSVs. Commits on success.
+    Delete child rows before patients to satisfy foreign key constraints.
     """
     session.execute(delete(EncounterRow))
     session.execute(delete(LabRow))
     session.execute(delete(DiagnosisRow))
     session.execute(delete(PatientRow))
 
-    # Insert parents before children: the child tables FK to patients, and with no
-    # ORM relationship() declared the unit-of-work can't infer that ordering on its
-    # own, so flush the patients first.
+    # Without ORM relationships, flush patients first to satisfy the child rows' FKs.
     session.add_all(
         PatientRow(
             patient_id=p.patient_id,

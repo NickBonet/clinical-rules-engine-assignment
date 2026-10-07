@@ -1,8 +1,6 @@
-"""Task generation: turn a Need into an actionable Task (or nothing).
+"""Generate a task when a patient's care need is not already covered.
 
-A thin dispatcher keyed by `need_type`, with one resolver per type. Today only
-"visit_cadence" exists; adding a "lab_order" need type means registering a new
-resolver here and nothing else.
+Each need type has a registered handler. Currently only visit_cadence is supported.
 """
 
 from __future__ import annotations
@@ -27,7 +25,7 @@ def resolver(need_type: str) -> Callable[[Resolver], Resolver]:
 def generate_task(need: Need, ctx: PatientContext, as_of: date) -> Task | None:
     try:
         resolve = _RESOLVERS[need.need_type]
-    except KeyError:  # pragma: no cover - guards against an unregistered need type
+    except KeyError:  # pragma: no cover - unregistered need type
         raise ValueError(
             f"No task resolver registered for need_type={need.need_type!r}"
         ) from None
@@ -38,7 +36,7 @@ def generate_task(need: Need, ctx: PatientContext, as_of: date) -> Task | None:
 def _resolve_visit_cadence(need: Need, ctx: PatientContext, as_of: date) -> Task | None:
     encounters = ctx.encounters_for(need.specialty)
 
-    # An already-scheduled future visit for this specialty supersedes any task.
+    # An upcoming visit means no task is needed for this specialty.
     if any(e.encounter_date > as_of for e in encounters):
         return None
 
@@ -69,5 +67,5 @@ def _resolve_visit_cadence(need: Need, ctx: PatientContext, as_of: date) -> Task
             task_type=TaskType.REFERRAL,
             reason=f"No prior {need.specialty} encounter; referral review required",
         )
-    # PCP with no encounter history -> no task (per spec).
+    # The spec requires no task when there is no PCP visit history.
     return None

@@ -17,7 +17,7 @@ class Base(DeclarativeBase):
     pass
 
 
-# Facts (full refresh per ingest; 1:1 with the domain fact types)
+# Patient data, reloaded on each ingest.
 class PatientRow(Base):
     __tablename__ = "patients"
 
@@ -60,12 +60,9 @@ class EncounterRow(Base):
     provider_name: Mapped[str]
 
 
-# Derived state (replaced per patient; what the API reads)
-#
-# patient_id is an indexed column, not an FK: derived state is replaced per
-# patient independently of facts, so it should not be coupled to fact row
-# lifetimes. `needs` are transient (used only to generate tasks during a run) and
-# intentionally not persisted.
+# Results, replaced per patient and read by the API.
+# No patient FK: patient data and results are replaced separately.
+# Needs are used to generate tasks during a run, but are not stored.
 class EnrollmentRow(Base):
     __tablename__ = "enrollments"
 
@@ -83,11 +80,11 @@ class TaskRow(Base):
     program: Mapped[str]
     need_type: Mapped[str]
     specialty: Mapped[str | None] = mapped_column(index=True)
-    task_type: Mapped[str] = mapped_column(index=True)  # role/filter predicate
+    task_type: Mapped[str] = mapped_column(index=True)  # Used for role and task filters.
     reason: Mapped[str]
 
 
-# Ingestion run metadata: the as_of each ingest evaluated against.
+# Evaluation date and timestamp for each ingest.
 class PipelineRunRow(Base):
     __tablename__ = "pipeline_runs"
 

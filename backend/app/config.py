@@ -1,5 +1,4 @@
-"""Runtime configuration. The as-of date and data location are overridable so the
-pipeline is reproducible and testable."""
+"""Runtime settings, read from APP_ environment variables or .env."""
 
 from __future__ import annotations
 
@@ -9,25 +8,22 @@ from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# backend/app/config.py -> repo root is three parents up.
+# Resolve the data directory relative to the repo, not the working directory.
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="APP_", env_file=".env", extra="ignore")
 
-    # "sqlite" runs with an ephemeral in-memory SQLite DB (no setup); "postgres"
-    # uses the persistent Postgres DB. Both go through the one SQL repository.
+    # SQLite runs in memory; Postgres saves data between runs.
     backend: Literal["sqlite", "postgres"] = "sqlite"
 
-    # Used only when backend is set to postgres. Host
-    # is "localhost" for a host-run backend and the "db" service name inside the
-    # compose network; override with APP_DATABASE_URL accordingly.
+    # Postgres only. Use localhost when running locally, or db inside Docker Compose.
     database_url: str = "postgresql+psycopg://app:app@localhost:5432/clinical"
 
     data_dir: Path = REPO_ROOT / "data"
 
-    # None -> derive from data (max lab result_date) at ingest time.
+    # Default to the latest lab date during ingest.
     as_of: date | None = None
 
 

@@ -1,8 +1,6 @@
-"""Core domain entities: facts, derived needs, and tasks.
+"""Patient data, program needs, and tasks used by the rules engine.
 
-These are plain, immutable dataclasses with no persistence or framework coupling.
-The rules engine and task generator operate purely on these types, which is what
-keeps the evaluation core serializable and TaskIQ-ready later on.
+These immutable dataclasses do not depend on the database or API framework.
 """
 
 from __future__ import annotations
@@ -12,7 +10,7 @@ from datetime import date
 from enum import StrEnum
 
 
-# Facts (loaded from the CSVs, 1:1 with the source columns after normalization)
+# Patient data loaded from CSVs.
 @dataclass(frozen=True)
 class Patient:
     patient_id: str
@@ -21,10 +19,10 @@ class Patient:
     date_of_birth: date
     gender: str
     language: str | None
-    pcp_provider_name: str | None  # NOTE: not used by task logic; PCP *encounters* are.
+    pcp_provider_name: str | None  # Tasks use PCP encounters, not this field.
 
     def age_at(self, as_of: date) -> int:
-        """Calendar age at `as_of`, adjusting for whether the birthday has passed."""
+        """Age in full years on the evaluation date."""
         dob = self.date_of_birth
         years = as_of.year - dob.year
         if (as_of.month, as_of.day) < (dob.month, dob.day):
@@ -43,7 +41,7 @@ class Diagnosis:
 @dataclass(frozen=True)
 class LabResult:
     patient_id: str
-    test_name: str  # normalized (e.g. raw "HbA1c" -> "A1C")
+    test_name: str  # Normalized during ingest: "HbA1c" becomes "A1C".
     result_value: float
     result_date: date
 
@@ -56,7 +54,7 @@ class Encounter:
     provider_name: str
 
 
-# Patient context: everything the engine needs for one patient
+# Data used to evaluate one patient.
 @dataclass(frozen=True)
 class PatientContext:
     patient: Patient
@@ -77,20 +75,19 @@ class PatientContext:
 
 @dataclass(frozen=True)
 class Need:
-    """A clinical requirement produced by a program for a patient at a risk tier.
+    """Care needed for a patient's program and risk tier.
 
-    `need_type` drives task-generation dispatch. Today only "visit_cadence" exists;
-    a future "lab_order" need registers its own resolver without touching the rest.
+    The task generator chooses a handler using need_type.
     """
 
     program: str
-    need_type: str  # "visit_cadence" (future: "lab_order", ...)
+    need_type: str  # Currently "visit_cadence".
     specialty: str | None
     cadence_days: int
     is_specialist: bool
 
 
-# Task and task type models, representing work items generated for patients based on their needs.
+# Work generated from patient needs.
 class TaskType(StrEnum):
     SCHEDULING = "scheduling"
     REFERRAL = "referral"
@@ -108,7 +105,7 @@ class Task:
 
 @dataclass(frozen=True)
 class Enrollment:
-    """Derived program state for a patient: which program, which risk tier, needs."""
+    """A patient's program, risk tier, and care needs."""
 
     patient_id: str
     program: str

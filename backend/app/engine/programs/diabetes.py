@@ -1,4 +1,4 @@
-"""Diabetes Management eligibility, risk stratification, and visit needs."""
+"""Diabetes Management rules and visit needs."""
 
 from __future__ import annotations
 
@@ -7,12 +7,12 @@ from datetime import date, timedelta
 from app.domain import Need, PatientContext
 from app.engine.programs.base import ProgramRule, _visit
 
-# "Within last 6 months" - fixed at 180 days, inclusive (see architecture doc).
+# Treat "within the last 6 months" as 180 days, including the cutoff date.
 A1C_WINDOW_DAYS = 180
 
 DIABETES_PREFIXES: tuple[str, ...] = ("E10", "E11")
 
-# Seed data: risk tier -> [(specialty, cadence_days)]. Transcribed from the spec.
+# Visit specialties and cadences for each risk tier, from the spec.
 _DIABETES_NEEDS: dict[str, tuple[tuple[str, int], ...]] = {
     "High Risk": (
         ("Endocrinology", 90),
@@ -57,7 +57,7 @@ class DiabetesManagementProgram(ProgramRule):
         return tuple(_visit(self.name, specialty, cadence) for specialty, cadence in specs)
 
     def _most_recent_a1c(self, ctx: PatientContext, as_of: date) -> float | None:
-        """Latest A1C within the window; ties broken by higher value (conservative)."""
+        """Latest A1C in the window; use the higher value when dates tie."""
         window_start = as_of - timedelta(days=A1C_WINDOW_DAYS)
         in_window = [
             lab for lab in ctx.labs

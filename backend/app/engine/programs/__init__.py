@@ -1,7 +1,6 @@
-"""Stateless program rules and their explicit default registry.
+"""Program rules and the default registry.
 
-Adding a program means adding a module and registering its class here; nothing
-else in the engine, pipeline, or API changes.
+Add new programs in their own modules and register them in default_programs().
 """
 
 from app.engine.programs.base import ProgramRule

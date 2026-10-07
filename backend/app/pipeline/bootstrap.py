@@ -1,14 +1,7 @@
-"""Build a fully-evaluated repository, for either backend.
+"""Set up storage for ingestion or API startup.
 
-Both backends use the one `SqlRepository` over SQLAlchemy; they differ only in
-the engine:
-
-- `build_sqlite_repository` — ephemeral in-memory SQLite. Ingests + evaluates in
-  process (on the CLI, a dry run; on the API, at startup). No files, no setup.
-- `ingest_postgres` (write) + `open_postgres_repository` (read) — the persistent
-  Postgres path, where a writer process populates the DB and the API reads it.
-
-All return `(Repository, date)` so callers are backend-agnostic.
+SQLite loads and evaluates data in memory. Postgres stores ingestion results
+for the API to read later. Both use SqlRepository and return the evaluation date.
 """
 
 from __future__ import annotations
@@ -32,7 +25,7 @@ from app.repository.sql import latest_as_of, record_run, write_facts
 
 
 def _ingest_into(engine: Engine, data_dir: Path, as_of_override: date | None) -> tuple[Repository, date]:
-    """Create schema, refresh facts, evaluate, and record the run on `engine`."""
+    """Create tables, load patient data, evaluate rules, and record the run."""
     create_schema(engine)
     factory = make_session_factory(engine)
 
@@ -43,7 +36,7 @@ def _ingest_into(engine: Engine, data_dir: Path, as_of_override: date | None) ->
         write_facts(session, contexts)
 
     repo = SqlRepository(factory)
-    run_all(as_of, repo)  # per-patient replace_derived_state, each its own txn
+    run_all(as_of, repo)  # Each patient's results are saved in a separate transaction.
 
     with factory() as session:
         record_run(session, as_of)
@@ -52,20 +45,20 @@ def _ingest_into(engine: Engine, data_dir: Path, as_of_override: date | None) ->
 
 
 def build_sqlite_repository(data_dir: Path, as_of_override: date | None = None) -> tuple[Repository, date]:
-    """Zero-setup path: ingest + evaluate into an ephemeral in-memory SQLite DB."""
+    """Load and evaluate CSV data in an in-memory SQLite database."""
     return _ingest_into(make_sqlite_engine(), data_dir, as_of_override)
 
 
 def ingest_postgres(data_dir: Path, as_of_override: date | None = None) -> tuple[Repository, date]:
-    """Postgres write path: persist facts + derived state to the configured DB.
+    """Load and evaluate CSV data in the configured Postgres database.
 
-    Returns a read repository over the freshly-written state (for the CLI summary).
+    Return the repository and evaluation date for the CLI summary.
     """
     return _ingest_into(make_engine(), data_dir, as_of_override)
 
 
 def open_postgres_repository() -> tuple[Repository, date]:
-    """Postgres read path for the API: connect and read; do not re-derive."""
+    """Open stored Postgres results for the API without rerunning the pipeline."""
     engine = make_engine()
     factory = make_session_factory(engine)
     with factory() as session:

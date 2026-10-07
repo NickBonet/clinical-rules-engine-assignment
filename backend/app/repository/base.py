@@ -1,9 +1,6 @@
-"""Repository interface — the single I/O seam between the application(s) and storage.
+"""Storage interface used by the pipeline and API.
 
-The pipeline and API depend on this Protocol, not on a concrete backend, so the
-in-memory implementation (now) and a SQLAlchemy/Postgres one (later) are
-interchangeable. `load_patient_context` + `replace_derived_state` are exactly the
-two calls the TaskIQ-ready `run_patient` seam needs.
+Callers work with domain dataclasses rather than database rows.
 """
 
 from __future__ import annotations
@@ -20,8 +17,10 @@ class Repository(Protocol):
     def replace_derived_state(
         self, patient_id: str, enrollments: list[Enrollment], tasks: list[Task]
     ) -> None:
-        """Idempotently replace this patient's enrollments + tasks (per-patient
-        transaction), so a retried job yields identical state."""
+        """Replace a patient's enrollments and tasks in one transaction.
+
+        Repeating the same write must not create duplicates.
+        """
         ...
 
     def list_enrollments(self) -> list[Enrollment]: ...
