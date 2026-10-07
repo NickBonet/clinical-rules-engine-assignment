@@ -76,16 +76,16 @@ def list_patients() -> list[dict]:
         enrollments_by_patient.setdefault(e.patient_id, []).append(e)
 
     out = []
-    for pid in repo.patient_ids():
-        enrollments = enrollments_by_patient.get(pid, [])
-        if not enrollments and pid not in tasks_by_patient:
+    for patient_id in repo.patient_ids():
+        enrollments = enrollments_by_patient.get(patient_id, [])
+        if not enrollments and patient_id not in tasks_by_patient:
             continue
         out.append({
-            "patient_id": pid,
+            "patient_id": patient_id,
             "enrollments": [
                 {"program": e.program, "risk_tier": e.risk_tier} for e in enrollments
             ],
-            "tasks": [_task_dict(t) for t in tasks_by_patient.get(pid, [])],
+            "tasks": [_task_dict(t) for t in tasks_by_patient.get(patient_id, [])],
         })
     return out
 

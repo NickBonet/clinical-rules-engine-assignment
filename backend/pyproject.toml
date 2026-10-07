@@ -23,6 +23,11 @@ dev = [
 # `uv run ingest` loads CSV data and rebuilds enrollments and tasks.
 ingest = "app.pipeline.cli:main"
 
+[tool.pytest.ini_options]
+# rootdir on sys.path so tests import both `app` and the `tests` helpers package.
+pythonpath = ["."]
+testpaths = ["tests"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
