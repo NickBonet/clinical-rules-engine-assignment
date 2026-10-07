@@ -15,7 +15,7 @@ export function App() {
   const [role, setRole] = useState<Role>("scheduler");
   const [specialty, setSpecialty] = useState<string>("");
   const [taskType, setTaskType] = useState<string>("");
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [asOf, setAsOf] = useState<string | null>(null);
 
   useEffect(() => {
@@ -25,19 +25,42 @@ export function App() {
       .catch(() => setAsOf(null));
   }, []);
 
+  // Fetch tasks for the selected role; filter specialty and type locally.
   useEffect(() => {
-    const params = new URLSearchParams({ role });
-    if (specialty) params.set("specialty", specialty);
-    if (taskType) params.set("task_type", taskType);
-    fetch(`/api/tasks?${params}`)
-      .then((r) => r.json())
-      .then(setTasks)
-      .catch(() => setTasks([]));
-  }, [role, specialty, taskType]);
+    const controller = new AbortController();
+    let active = true;
+
+    fetch(`/api/tasks?role=${role}`, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("Failed to load tasks");
+        return response.json();
+      })
+      .then((tasks: Task[]) => {
+        if (active) setAllTasks(tasks);
+      })
+      .catch(() => {
+        if (active) setAllTasks([]);
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [role]);
 
   const specialties = useMemo(
-    () => [...new Set(tasks.map((t) => t.specialty).filter(Boolean))].sort() as string[],
-    [tasks],
+    () => [...new Set(allTasks.map((t) => t.specialty).filter(Boolean))].sort() as string[],
+    [allTasks],
+  );
+
+  const tasks = useMemo(
+    () =>
+      allTasks.filter(
+        (t) =>
+          (!specialty || t.specialty === specialty) &&
+          (!taskType || t.task_type === taskType),
+      ),
+    [allTasks, specialty, taskType],
   );
 
   return (
@@ -66,7 +89,16 @@ export function App() {
       <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem", flexWrap: "wrap" }}>
         <label>
           Role{" "}
-          <select value={role} onChange={(e) => setRole(e.target.value as Role)}>
+          <select
+            value={role}
+            onChange={(e) => {
+              setRole(e.target.value as Role);
+              setAllTasks([]);
+              // Clear filters when switching roles.
+              setSpecialty("");
+              setTaskType("");
+            }}
+          >
             <option value="scheduler">Scheduler (scheduling only)</option>
             <option value="clinical">Clinical team (scheduling + referral)</option>
           </select>
