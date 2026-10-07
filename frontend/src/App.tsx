@@ -9,13 +9,24 @@ type Task = {
   reason: string;
 };
 
+type Enrollment = { program: string; risk_tier: string };
+
+type Patient = {
+  patient_id: string;
+  enrollments: Enrollment[];
+  tasks: Task[];
+};
+
 type Role = "scheduler" | "clinical";
+type View = "patients" | "tasks";
 
 export function App() {
   const [role, setRole] = useState<Role>("scheduler");
+  const [view, setView] = useState<View>("patients");
   const [specialty, setSpecialty] = useState<string>("");
   const [taskType, setTaskType] = useState<string>("");
-  const [allTasks, setAllTasks] = useState<Task[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [specialties, setSpecialties] = useState<string[]>([]);
   const [asOf, setAsOf] = useState<string | null>(null);
 
   useEffect(() => {
@@ -25,21 +36,22 @@ export function App() {
       .catch(() => setAsOf(null));
   }, []);
 
-  // Fetch tasks for the selected role; filter specialty and type locally.
+  // Specialty options for the role, from a dedicated endpoint — so selecting a
+  // specialty doesn't narrow the list, and the options stay authoritative in the API.
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
 
-    fetch(`/api/tasks?role=${role}`, { signal: controller.signal })
+    fetch(`/api/specialties?role=${role}`, { signal: controller.signal })
       .then((response) => {
-        if (!response.ok) throw new Error("Failed to load tasks");
+        if (!response.ok) throw new Error("Failed to load specialties");
         return response.json();
       })
-      .then((tasks: Task[]) => {
-        if (active) setAllTasks(tasks);
+      .then((names: string[]) => {
+        if (active) setSpecialties(names);
       })
       .catch(() => {
-        if (active) setAllTasks([]);
+        if (active) setSpecialties([]);
       });
 
     return () => {
@@ -48,20 +60,35 @@ export function App() {
     };
   }, [role]);
 
-  const specialties = useMemo(
-    () => [...new Set(allTasks.map((t) => t.specialty).filter(Boolean))].sort() as string[],
-    [allTasks],
-  );
+  // Displayed patients: filtered server-side by role, specialty, and task type.
+  // The API returns only matching patients, each with just their matching tasks.
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
 
-  const tasks = useMemo(
-    () =>
-      allTasks.filter(
-        (t) =>
-          (!specialty || t.specialty === specialty) &&
-          (!taskType || t.task_type === taskType),
-      ),
-    [allTasks, specialty, taskType],
-  );
+    const params = new URLSearchParams({ role });
+    if (specialty) params.set("specialty", specialty);
+    if (taskType) params.set("task_type", taskType);
+
+    fetch(`/api/patients?${params}`, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("Failed to load patients");
+        return response.json();
+      })
+      .then((rows: Patient[]) => {
+        if (active) setPatients(rows);
+      })
+      .catch(() => {
+        if (active) setPatients([]);
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [role, specialty, taskType]);
+
+  const taskRows = useMemo(() => patients.flatMap((p) => p.tasks), [patients]);
 
   return (
     <main style={{ fontFamily: "system-ui, sans-serif", padding: "1.5rem", maxWidth: 960 }}>
@@ -88,13 +115,22 @@ export function App() {
 
       <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem", flexWrap: "wrap" }}>
         <label>
+          View{" "}
+          <select value={view} onChange={(e) => setView(e.target.value as View)}>
+            <option value="patients">By patient</option>
+            <option value="tasks">By task</option>
+          </select>
+        </label>
+
+        <label>
           Role{" "}
           <select
             value={role}
             onChange={(e) => {
               setRole(e.target.value as Role);
-              setAllTasks([]);
-              // Clear filters when switching roles.
+              setPatients([]);
+              setSpecialties([]);
+              // Clear filters when switching roles; the effects refetch.
               setSpecialty("");
               setTaskType("");
             }}
@@ -106,7 +142,13 @@ export function App() {
 
         <label>
           Specialty{" "}
-          <select value={specialty} onChange={(e) => setSpecialty(e.target.value)}>
+          <select
+            value={specialty}
+            onChange={(e) => {
+              setSpecialty(e.target.value);
+              setPatients([]);
+            }}
+          >
             <option value="">All</option>
             {specialties.map((s) => (
               <option key={s} value={s}>{s}</option>
@@ -118,7 +160,10 @@ export function App() {
           Task type{" "}
           <select
             value={taskType}
-            onChange={(e) => setTaskType(e.target.value)}
+            onChange={(e) => {
+              setTaskType(e.target.value);
+              setPatients([]);
+            }}
             disabled={role === "scheduler"}
           >
             <option value="">All</option>
@@ -128,6 +173,61 @@ export function App() {
         </label>
       </div>
 
+      {view === "patients" ? (
+        <PatientTable patients={patients} />
+      ) : (
+        <TaskTable tasks={taskRows} />
+      )}
+    </main>
+  );
+}
+
+function PatientTable({ patients }: { patients: Patient[] }) {
+  return (
+    <>
+      <p>{patients.length} patient(s)</p>
+      <table border={1} cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
+        <thead>
+          <tr>
+            <th>Patient</th>
+            <th>Enrollments (risk tier)</th>
+            <th>Tasks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {patients.map((p) => (
+            <tr key={p.patient_id}>
+              <td style={{ verticalAlign: "top" }}>{p.patient_id}</td>
+              <td style={{ verticalAlign: "top" }}>
+                {p.enrollments.map((e, i) => (
+                  <div key={i}>
+                    {e.program} — <em>{e.risk_tier}</em>
+                  </div>
+                ))}
+              </td>
+              <td style={{ verticalAlign: "top" }}>
+                {p.tasks.length === 0 ? (
+                  <span style={{ color: "#6b7280" }}>No tasks</span>
+                ) : (
+                  p.tasks.map((t, i) => (
+                    <div key={i}>
+                      {t.specialty ?? "—"} — {t.task_type}
+                      <span style={{ color: "#6b7280" }}> ({t.reason})</span>
+                    </div>
+                  ))
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  );
+}
+
+function TaskTable({ tasks }: { tasks: Task[] }) {
+  return (
+    <>
       <p>{tasks.length} task(s)</p>
       <table border={1} cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
         <thead>
@@ -151,6 +251,6 @@ export function App() {
           ))}
         </tbody>
       </table>
-    </main>
+    </>
   );
 }
