@@ -34,6 +34,8 @@ def generate_task(need: Need, ctx: PatientContext, as_of: date) -> Task | None:
 
 @resolver("visit_cadence")
 def _resolve_visit_cadence(need: Need, ctx: PatientContext, as_of: date) -> Task | None:
+    if need.specialty is None or not need.specialty.strip():
+        raise ValueError("visit_cadence needs require a non-empty specialty")
     encounters = ctx.encounters_for(need.specialty)
 
     # An upcoming visit means no task is needed for this specialty.

@@ -69,8 +69,11 @@ class PatientContext:
     def encounters_for(self, specialty: str) -> tuple[Encounter, ...]:
         return tuple(e for e in self.encounters if e.specialty == specialty)
 
-    def has_diagnosis_prefix(self, prefixes: tuple[str, ...]) -> bool:
-        return any(d.icd_code.startswith(prefixes) for d in self.diagnoses)
+    def has_diagnosis_prefix(self, prefixes: tuple[str, ...], as_of: date) -> bool:
+        return any(
+            diagnosis.diagnosed_date <= as_of and diagnosis.icd_code.startswith(prefixes)
+            for diagnosis in self.diagnoses
+        )
 
 
 @dataclass(frozen=True)

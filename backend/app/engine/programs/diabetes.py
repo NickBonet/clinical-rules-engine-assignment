@@ -40,7 +40,7 @@ class DiabetesManagementProgram(ProgramRule):
     name = "Diabetes Management"
 
     def is_eligible(self, ctx: PatientContext, as_of: date) -> bool:
-        return ctx.has_diagnosis_prefix(DIABETES_PREFIXES)
+        return ctx.has_diagnosis_prefix(DIABETES_PREFIXES, as_of)
 
     def determine_risk(self, ctx: PatientContext, as_of: date) -> str:
         a1c = self._most_recent_a1c(ctx, as_of)

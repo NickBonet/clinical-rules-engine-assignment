@@ -23,10 +23,15 @@ class PrimaryCareWellnessProgram(ProgramRule):
     def determine_risk(self, ctx: PatientContext, as_of: date) -> str:
         high = (
             ctx.patient.age_at(as_of) >= 65
-            or ctx.has_diagnosis_prefix(WELLNESS_CHRONIC_PREFIXES)
+            or ctx.has_diagnosis_prefix(WELLNESS_CHRONIC_PREFIXES, as_of)
         )
         return "High Priority" if high else "Standard"
 
     def build_needs(self, ctx: PatientContext, risk_tier: str) -> tuple[Need, ...]:
-        cadence = 180 if risk_tier == "High Priority" else 365
+        if risk_tier == "High Priority":
+            cadence = 180
+        elif risk_tier == "Standard":
+            cadence = 365
+        else:
+            raise ValueError(f"Unknown Primary Care Wellness risk tier: {risk_tier!r}")
         return (_visit(self.name, "PCP", cadence),)
