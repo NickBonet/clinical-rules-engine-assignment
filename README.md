@@ -33,7 +33,17 @@ docker-compose.yml   Used to stand up the whole stack (API, frontend, Postgres, 
 
 ## Run it
 
-**1. Backend**
+**Entire stack (persistent Postgres backend)**
+
+```bash
+docker compose up --build -d                      # from the repository root
+```
+
+Starts Postgres, initial ingestion, API, and frontend. Open the frontend at
+`http://localhost:5173`; the API is on port 8000 and Postgres on 5432. Stop local
+servers using these ports first. Deployment details are in the architecture summary.
+
+**Backend**
 
 ```bash
 cd backend
@@ -48,23 +58,13 @@ is optional and separate. Set `APP_AS_OF` when starting the API to override its 
 See the [backend README](backend/README.md#api-reference) for endpoints, filters,
 and Swagger documentation.
 
-**2. Frontend**
+**Frontend**
 
 ```bash
 cd frontend                   # from the repository root, in another terminal
 npm install
 npm run dev                   # http://localhost:5173, proxies /api -> :8000
 ```
-
-**3. Postgres (persistent backend)**
-
-```bash
-docker compose up --build -d                      # from the repository root
-```
-
-Starts Postgres, initial ingestion, API, and frontend. Open the frontend at
-`http://localhost:5173`; the API is on port 8000 and Postgres on 5432. Stop local
-servers using these ports first. Deployment details are in the architecture summary.
 
 ## Re-ingest Postgres With Docker
 
@@ -91,20 +91,3 @@ architecture summary.
 uv run --project backend ruff check backend/app
 npm --prefix frontend run build
 ```
-
-The frontend build includes TypeScript checking. The test suite was removed for
-this assignment.
-
-## Key assumptions
-
-- **Reference ("as-of") date** defaults to `max(lab result_date)` = 2026-04-07,
-  overridable via `--as-of` / `APP_AS_OF`. Using today's date instead changes
-  A1C windows and which encounters count as upcoming.
-- **Diagnosis dates** must be on or before `as_of` to affect eligibility or risk.
-- **"Within last 6 months" = 180 days**, inclusive.
-- **Most recent A1C** = latest A1C within the window; ties broken by higher value.
-  Future lab results are excluded; datasets without labs require an explicit date.
-- **Referral tasks apply to specialists only**; a patient with no PCP encounter
-  history generates no Primary Care Wellness task.
-- **"Upcoming encounter → no task"** is applied to all specialties, including PCP.
-- **Validation** rejects missing/blank visit specialties and unknown wellness risk tiers.
