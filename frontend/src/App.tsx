@@ -19,7 +19,7 @@ export function App() {
 
   return (
     <main style={{ fontFamily: "system-ui, sans-serif", padding: "1.5rem", maxWidth: 960 }}>
-      <h1>Clinical Rules Engine Assignment</h1>
+      <h1>Patient Care Worklist</h1>
       <ReferenceDate asOf={asOf} />
       <WorklistFilters
         view={view}

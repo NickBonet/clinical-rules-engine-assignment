@@ -36,6 +36,20 @@ def test_not_eligible_with_no_diagnoses() -> None:
     assert program.is_eligible(context(age=50), AS_OF) is False
 
 
+@pytest.mark.parametrize(
+    ("diagnosed_date", "eligible"),
+    [(AS_OF, True), (days_after(1), False)],
+)
+def test_eligibility_respects_diagnosis_date(
+    diagnosed_date, eligible: bool
+) -> None:
+    ctx = context(
+        age=50,
+        diagnoses=(diagnosis("E11.9", diagnosed_date=diagnosed_date),),
+    )
+    assert program.is_eligible(ctx, AS_OF) is eligible
+
+
 # --- Risk tier boundaries --------------------------------------------------
 @pytest.mark.parametrize(
     "value, tier",

@@ -46,12 +46,17 @@ def patient(
     )
 
 
-def diagnosis(icd_code: str, *, patient_id: str = PID) -> Diagnosis:
+def diagnosis(
+    icd_code: str,
+    *,
+    patient_id: str = PID,
+    diagnosed_date: date | None = None,
+) -> Diagnosis:
     return Diagnosis(
         patient_id=patient_id,
         icd_code=icd_code,
         description=icd_code,
-        diagnosed_date=days_before(400),
+        diagnosed_date=diagnosed_date if diagnosed_date is not None else days_before(400),
     )
 
 

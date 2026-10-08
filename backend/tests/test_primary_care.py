@@ -72,6 +72,20 @@ def test_unrelated_diagnosis_stays_standard() -> None:
     assert program.determine_risk(ctx, AS_OF) == "Standard"
 
 
+@pytest.mark.parametrize(
+    ("diagnosed_date", "tier"),
+    [(AS_OF, "High Priority"), (days_after(1), "Standard")],
+)
+def test_chronic_diagnosis_tier_respects_diagnosis_date(
+    diagnosed_date, tier: str
+) -> None:
+    ctx = context(
+        age=30,
+        diagnoses=(diagnosis("I10", diagnosed_date=diagnosed_date),),
+    )
+    assert program.determine_risk(ctx, AS_OF) == tier
+
+
 # --- Cadence ---------------------------------------------------------------
 def test_high_priority_cadence_is_180() -> None:
     needs = program.build_needs(context(age=70), "High Priority")
