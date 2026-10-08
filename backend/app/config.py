@@ -26,5 +26,9 @@ class Settings(BaseSettings):
     # Default to the latest lab date during ingest.
     as_of: date | None = None
 
+    # External path prefix when served behind a proxy that strips it (e.g. "/api"
+    # for the nginx frontend). Empty for direct access, so /docs works locally.
+    root_path: str = ""
+
 
 settings = Settings()

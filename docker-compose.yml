@@ -35,6 +35,7 @@ services:
     environment:
       APP_BACKEND: postgres
       APP_DATABASE_URL: postgresql+psycopg://app:app@db:5432/clinical
+      APP_ROOT_PATH: /api
     ports:
       - "8000:8000"
     depends_on:
