@@ -20,6 +20,11 @@ export type Patient = {
 
 export type Health = { status: "ok"; as_of: string };
 
+export type CursorPage<T, Cursor extends string | number> = {
+  items: T[];
+  next_cursor: Cursor | null;
+};
+
 export type PatientFilters = {
   role: Role;
   specialty: string;

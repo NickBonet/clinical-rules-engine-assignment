@@ -35,3 +35,13 @@ class PatientResponse(BaseModel):
     patient_id: str = Field(description="Unique patient identifier.")
     enrollments: list[EnrollmentResponse] = Field(description="All program enrollments.")
     tasks: list[TaskResponse] = Field(description="Tasks matching the role and query filters.")
+
+
+class TaskPageResponse(BaseModel):
+    items: list[TaskResponse] = Field(description="Tasks on this page.")
+    next_cursor: int | None = Field(description="Cursor for the next page, if one exists.")
+
+
+class PatientPageResponse(BaseModel):
+    items: list[PatientResponse] = Field(description="Patients on this page.")
+    next_cursor: str | None = Field(description="Cursor for the next page, if one exists.")

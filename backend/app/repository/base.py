@@ -5,9 +5,18 @@ Callers work with domain dataclasses rather than database rows.
 
 from __future__ import annotations
 
-from typing import Protocol
+from dataclasses import dataclass
+from typing import Generic, Protocol, TypeVar
 
 from app.domain import Enrollment, PatientContext, Task
+
+T = TypeVar("T")
+
+
+@dataclass(frozen=True)
+class Page(Generic[T]):
+    items: list[T]
+    next_cursor: int | str | None
 
 
 class Repository(Protocol):
@@ -23,11 +32,30 @@ class Repository(Protocol):
         """
         ...
 
-    def list_enrollments(self) -> list[Enrollment]: ...
+    def list_patient_id_page(
+        self,
+        *,
+        limit: int,
+        cursor: str | None = None,
+        specialty: str | None = None,
+        task_type: str | None = None,
+        allowed_task_types: tuple[str, ...] | None = None,
+    ) -> Page[str]: ...
+    def list_enrollments(self, *, patient_ids: list[str] | None = None) -> list[Enrollment]: ...
     def list_tasks(
         self,
         *,
         specialty: str | None = None,
         task_type: str | None = None,
         allowed_task_types: tuple[str, ...] | None = None,
+        patient_ids: list[str] | None = None,
     ) -> list[Task]: ...
+    def list_task_page(
+        self,
+        *,
+        limit: int,
+        cursor: int | None = None,
+        specialty: str | None = None,
+        task_type: str | None = None,
+        allowed_task_types: tuple[str, ...] | None = None,
+    ) -> Page[Task]: ...

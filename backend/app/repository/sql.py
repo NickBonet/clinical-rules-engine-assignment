@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import date
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, exists, or_, select
 from sqlalchemy.orm import Session
 
 from app.domain import (
@@ -22,6 +22,7 @@ from app.domain import (
     Task,
     TaskType,
 )
+from app.repository.base import Page
 from app.repository.models import (
     DiagnosisRow,
     EncounterRow,
@@ -110,9 +111,51 @@ class SqlRepository:
             )
             session.commit()
 
-    def list_enrollments(self) -> list[Enrollment]:
+    def list_patient_id_page(
+        self,
+        *,
+        limit: int,
+        cursor: str | None = None,
+        specialty: str | None = None,
+        task_type: str | None = None,
+        allowed_task_types: tuple[str, ...] | None = None,
+    ) -> Page[str]:
+        matching_tasks = select(TaskRow.id).where(TaskRow.patient_id == PatientRow.patient_id)
+        if specialty is not None:
+            matching_tasks = matching_tasks.where(TaskRow.specialty == specialty)
+        if task_type is not None:
+            matching_tasks = matching_tasks.where(TaskRow.task_type == str(task_type))
+        if allowed_task_types is not None:
+            matching_tasks = matching_tasks.where(
+                TaskRow.task_type.in_([str(task_type) for task_type in allowed_task_types])
+            )
+        has_matching_task = exists(matching_tasks)
+
+        stmt = select(PatientRow.patient_id)
+        if specialty is not None or task_type is not None:
+            stmt = stmt.where(has_matching_task)
+        else:
+            has_enrollment = exists(
+                select(EnrollmentRow.id).where(EnrollmentRow.patient_id == PatientRow.patient_id)
+            )
+            stmt = stmt.where(or_(has_enrollment, has_matching_task))
+        if cursor is not None:
+            stmt = stmt.where(PatientRow.patient_id > cursor)
+        stmt = stmt.order_by(PatientRow.patient_id).limit(limit + 1)
+
         with self._session_factory() as session:
-            rows = session.scalars(select(EnrollmentRow)).all()
+            patient_ids = list(session.scalars(stmt))
+
+        has_more = len(patient_ids) > limit
+        items = patient_ids[:limit]
+        return Page(items=items, next_cursor=items[-1] if has_more else None)
+
+    def list_enrollments(self, *, patient_ids: list[str] | None = None) -> list[Enrollment]:
+        stmt = select(EnrollmentRow)
+        if patient_ids is not None:
+            stmt = stmt.where(EnrollmentRow.patient_id.in_(patient_ids))
+        with self._session_factory() as session:
+            rows = session.scalars(stmt).all()
         return [
             Enrollment(patient_id=r.patient_id, program=r.program, risk_tier=r.risk_tier)
             for r in rows
@@ -124,6 +167,7 @@ class SqlRepository:
         specialty: str | None = None,
         task_type: str | None = None,
         allowed_task_types: tuple[str, ...] | None = None,
+        patient_ids: list[str] | None = None,
     ) -> list[Task]:
         stmt = select(TaskRow)
         if specialty is not None:
@@ -132,18 +176,52 @@ class SqlRepository:
             stmt = stmt.where(TaskRow.task_type == str(task_type))
         if allowed_task_types is not None:
             stmt = stmt.where(TaskRow.task_type.in_([str(t) for t in allowed_task_types]))
+        if patient_ids is not None:
+            stmt = stmt.where(TaskRow.patient_id.in_(patient_ids))
         with self._session_factory() as session:
             rows = session.scalars(stmt).all()
+        return self._tasks_from_rows(rows)
+
+    def list_task_page(
+        self,
+        *,
+        limit: int,
+        cursor: int | None = None,
+        specialty: str | None = None,
+        task_type: str | None = None,
+        allowed_task_types: tuple[str, ...] | None = None,
+    ) -> Page[Task]:
+        stmt = select(TaskRow)
+        if cursor is not None:
+            stmt = stmt.where(TaskRow.id > cursor)
+        if specialty is not None:
+            stmt = stmt.where(TaskRow.specialty == specialty)
+        if task_type is not None:
+            stmt = stmt.where(TaskRow.task_type == str(task_type))
+        if allowed_task_types is not None:
+            stmt = stmt.where(TaskRow.task_type.in_([str(t) for t in allowed_task_types]))
+        stmt = stmt.order_by(TaskRow.id).limit(limit + 1)
+
+        with self._session_factory() as session:
+            rows = session.scalars(stmt).all()
+
+        has_more = len(rows) > limit
+        page_rows = rows[:limit]
+        next_cursor = page_rows[-1].id if has_more else None
+        return Page(items=self._tasks_from_rows(page_rows), next_cursor=next_cursor)
+
+    @staticmethod
+    def _tasks_from_rows(rows: list[TaskRow]) -> list[Task]:
         return [
             Task(
-                patient_id=r.patient_id,
-                program=r.program,
-                need_type=r.need_type,
-                specialty=r.specialty,
-                task_type=TaskType(r.task_type),
-                reason=r.reason,
+                patient_id=row.patient_id,
+                program=row.program,
+                need_type=row.need_type,
+                specialty=row.specialty,
+                task_type=TaskType(row.task_type),
+                reason=row.reason,
             )
-            for r in rows
+            for row in rows
         ]
 
 

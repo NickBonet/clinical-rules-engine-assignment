@@ -1,6 +1,6 @@
 """Patient population endpoints."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from app.api.dependencies import (
     RepositoryDependency,
@@ -8,7 +8,12 @@ from app.api.dependencies import (
     TaskTypeFilter,
     VisibleTaskTypes,
 )
-from app.api.schemas import EnrollmentResponse, PatientResponse, TaskResponse
+from app.api.schemas import (
+    EnrollmentResponse,
+    PatientPageResponse,
+    PatientResponse,
+    TaskResponse,
+)
 from app.domain import Enrollment, Task
 
 router = APIRouter(tags=["Patients"])
@@ -20,7 +25,11 @@ def list_patients(
     allowed_task_types: VisibleTaskTypes,
     specialty: SpecialtyFilter = None,
     task_type: TaskTypeFilter = None,
-) -> list[PatientResponse]:
+    limit: int = Query(default=50, ge=1, le=100, description="Maximum patients to return."),
+    cursor: str | None = Query(
+        default=None, min_length=1, description="Patient ID to continue after."
+    ),
+) -> PatientPageResponse:
     """List patients with their enrollments, risk tiers, and role-visible tasks.
 
     Tasks are always restricted to the selected role's visibility.
@@ -29,7 +38,15 @@ def list_patients(
     with an enrollment or a role-visible task; enrolled patients may have an empty
     task list.
     """
+    page = repo.list_patient_id_page(
+        limit=limit,
+        cursor=cursor,
+        specialty=specialty,
+        task_type=str(task_type) if task_type else None,
+        allowed_task_types=allowed_task_types,
+    )
     tasks = repo.list_tasks(
+        patient_ids=page.items,
         specialty=specialty,
         task_type=str(task_type) if task_type else None,
         allowed_task_types=allowed_task_types,
@@ -39,19 +56,13 @@ def list_patients(
         tasks_by_patient.setdefault(task.patient_id, []).append(task)
 
     enrollments_by_patient: dict[str, list[Enrollment]] = {}
-    for enrollment in repo.list_enrollments():
+    for enrollment in repo.list_enrollments(patient_ids=page.items):
         enrollments_by_patient.setdefault(enrollment.patient_id, []).append(enrollment)
 
-    filtering = specialty is not None or task_type is not None
     patients = []
-    for patient_id in repo.patient_ids():
+    for patient_id in page.items:
         patient_tasks = tasks_by_patient.get(patient_id, [])
         enrollments = enrollments_by_patient.get(patient_id, [])
-        if filtering:
-            if not patient_tasks:
-                continue
-        elif not enrollments and not patient_tasks:
-            continue
         patients.append(
             PatientResponse(
                 patient_id=patient_id,
@@ -59,4 +70,4 @@ def list_patients(
                 tasks=[TaskResponse.model_validate(task) for task in patient_tasks],
             )
         )
-    return patients
+    return PatientPageResponse(items=patients, next_cursor=page.next_cursor)

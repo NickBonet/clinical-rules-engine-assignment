@@ -1,6 +1,6 @@
 """Role-visible task endpoints."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from app.api.dependencies import (
     RepositoryDependency,
@@ -8,7 +8,7 @@ from app.api.dependencies import (
     TaskTypeFilter,
     VisibleTaskTypes,
 )
-from app.api.schemas import TaskResponse
+from app.api.schemas import TaskPageResponse, TaskResponse
 
 router = APIRouter(tags=["Tasks"])
 
@@ -19,11 +19,18 @@ def list_tasks(
     allowed_task_types: VisibleTaskTypes,
     specialty: SpecialtyFilter = None,
     task_type: TaskTypeFilter = None,
-) -> list[TaskResponse]:
+    limit: int = Query(default=50, ge=1, le=100, description="Maximum tasks to return."),
+    cursor: int | None = Query(default=None, ge=0, description="Task ID to continue after."),
+) -> TaskPageResponse:
     """List tasks visible to the role, with optional specialty and type filters."""
-    tasks = repo.list_tasks(
+    page = repo.list_task_page(
+        limit=limit,
+        cursor=cursor,
         specialty=specialty,
         task_type=str(task_type) if task_type else None,
         allowed_task_types=allowed_task_types,
     )
-    return [TaskResponse.model_validate(task) for task in tasks]
+    return TaskPageResponse(
+        items=[TaskResponse.model_validate(task) for task in page.items],
+        next_cursor=page.next_cursor,
+    )

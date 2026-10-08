@@ -15,7 +15,8 @@ export function App() {
     specialty: "",
     taskType: "",
   });
-  const { asOf, patients, specialties } = useWorklistData(filters);
+  const { asOf, hasMore, loadingMore, loadMore, patients, specialties, tasks } =
+    useWorklistData(filters, view);
 
   return (
     <main style={{ fontFamily: "system-ui, sans-serif", padding: "1.5rem", maxWidth: 960 }}>
@@ -31,7 +32,12 @@ export function App() {
       {view === "patients" ? (
         <PatientTable patients={patients} />
       ) : (
-        <TaskTable tasks={patients.flatMap((patient) => patient.tasks)} />
+        <TaskTable tasks={tasks} />
+      )}
+      {hasMore && (
+        <button type="button" onClick={loadMore} disabled={loadingMore}>
+          {loadingMore ? "Loading..." : "Load more"}
+        </button>
       )}
     </main>
   );
