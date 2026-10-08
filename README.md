@@ -39,9 +39,8 @@ docker-compose.yml   Used to stand up the whole stack (API, frontend, Postgres, 
 docker compose up --build -d                      # from the repository root
 ```
 
-Starts Postgres, initial ingestion, API, and frontend. Open the frontend at
-`http://localhost:5173`; the API is on port 8000 and Postgres on 5432. Stop local
-servers using these ports first. Deployment details are in the architecture summary.
+Starts Postgres, initial ingestion, API, and frontend. View the frontend at
+`http://localhost:5173`; the API is on port 8000 and Postgres on 5432.
 
 **Backend**
 
