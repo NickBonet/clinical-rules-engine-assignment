@@ -62,7 +62,7 @@ class EncounterRow(Base):
 
 # Results, replaced per patient and read by the API.
 # No patient FK: patient data and results are replaced separately.
-# Needs are used to generate tasks during a run, but are not stored.
+# Needs are used to generate tasks during a run, but are not stored here.
 class EnrollmentRow(Base):
     __tablename__ = "enrollments"
 
