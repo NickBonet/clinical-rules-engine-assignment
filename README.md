@@ -5,7 +5,7 @@ patient eligibility and risk tier per program, derives clinical needs, generates
 actionable tasks, and serves role-scoped worklists via an API and a lightweight
 frontend.
 
-See [`assignment_architecture_summary.md`](assignment_architecture_summary.md) for
+See [ARCHITECTURE.md](ARCHITECTURE.md) for
 the architecture, data model, and design decisions.
 
 ## Layout

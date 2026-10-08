@@ -2,7 +2,7 @@
 
 FastAPI service, pure rules engine, task generation, and the CSV pipeline.
 See the [root README](../README.md) for how to run it and the
-[architecture summary](../assignment_architecture_summary.md) for design.
+[ARCHITECTURE.md](../ARCHITECTURE.md) for design.
 
 ```bash
 uv sync
