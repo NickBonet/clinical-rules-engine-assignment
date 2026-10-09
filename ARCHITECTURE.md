@@ -74,15 +74,15 @@ SQLAlchemy defines the following tables in [repository/models.py](backend/app/re
 
 The first four tables are populated from `patients.csv`, `diagnoses.csv`, `labs.csv`, and `encounters.csv`. The `patients` table omits the CSV's `phone` field, which the loader does not use. SQL types below are inferred by SQLAlchemy from the mapped Python types.
 
-| Table | Columns and SQL types | Keys and relationships |
-|---|---|---|
-| `patients` | `patient_id VARCHAR`<br>`first_name VARCHAR`<br>`last_name VARCHAR`<br>`date_of_birth DATE`<br>`gender VARCHAR`<br>`language VARCHAR NULL`<br>`pcp_provider_name VARCHAR NULL` | Primary key: `patient_id`. |
-| `diagnoses` | `id INTEGER`<br>`patient_id VARCHAR`<br>`icd_code VARCHAR`<br>`description VARCHAR`<br>`diagnosed_date DATE` | Primary key: `id`.<br>Foreign key: `patient_id` references `patients.patient_id`. |
-| `labs` | `id INTEGER`<br>`patient_id VARCHAR`<br>`test_name VARCHAR`<br>`result_value DOUBLE`<br>`result_date DATE` | Primary key: `id`.<br>Foreign key: `patient_id` references `patients.patient_id`. |
-| `encounters` | `id INTEGER`<br>`patient_id VARCHAR`<br>`specialty VARCHAR`<br>`encounter_date DATE`<br>`provider_name VARCHAR` | Primary key: `id`.<br>Foreign key: `patient_id` references `patients.patient_id`. |
-| `enrollments` | `id INTEGER`<br>`patient_id VARCHAR`<br>`program VARCHAR`<br>`risk_tier VARCHAR` | Primary key: `id`.<br>No patient foreign key. |
-| `tasks` | `id INTEGER`<br>`patient_id VARCHAR`<br>`program VARCHAR`<br>`need_type VARCHAR`<br>`specialty VARCHAR NULL`<br>`task_type VARCHAR`<br>`reason VARCHAR` | Primary key: `id`.<br>No patient foreign key. |
-| `pipeline_runs` | `id INTEGER`<br>`as_of DATE`<br>`created_at DATETIME` | Primary key: `id`. |
+| Table           | Columns and SQL types                                                                                                                                                          | Keys and relationships                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| `patients`      | `patient_id VARCHAR`<br>`first_name VARCHAR`<br>`last_name VARCHAR`<br>`date_of_birth DATE`<br>`gender VARCHAR`<br>`language VARCHAR NULL`<br>`pcp_provider_name VARCHAR NULL` | Primary key: `patient_id`.                                                        |
+| `diagnoses`     | `id INTEGER`<br>`patient_id VARCHAR`<br>`icd_code VARCHAR`<br>`description VARCHAR`<br>`diagnosed_date DATE`                                                                   | Primary key: `id`.<br>Foreign key: `patient_id` references `patients.patient_id`. |
+| `labs`          | `id INTEGER`<br>`patient_id VARCHAR`<br>`test_name VARCHAR`<br>`result_value DOUBLE`<br>`result_date DATE`                                                                     | Primary key: `id`.<br>Foreign key: `patient_id` references `patients.patient_id`. |
+| `encounters`    | `id INTEGER`<br>`patient_id VARCHAR`<br>`specialty VARCHAR`<br>`encounter_date DATE`<br>`provider_name VARCHAR`                                                                | Primary key: `id`.<br>Foreign key: `patient_id` references `patients.patient_id`. |
+| `enrollments`   | `id INTEGER`<br>`patient_id VARCHAR`<br>`program VARCHAR`<br>`risk_tier VARCHAR`                                                                                               | Primary key: `id`.<br>No patient foreign key.                                     |
+| `tasks`         | `id INTEGER`<br>`patient_id VARCHAR`<br>`program VARCHAR`<br>`need_type VARCHAR`<br>`specialty VARCHAR NULL`<br>`task_type VARCHAR`<br>`reason VARCHAR`                        | Primary key: `id`.<br>No patient foreign key.                                     |
+| `pipeline_runs` | `id INTEGER`<br>`as_of DATE`<br>`created_at DATETIME`                                                                                                                          | Primary key: `id`.                                                                |
 
 `SqlRepository` maps rows to domain objects before evaluation. Each operation uses its own SQLAlchemy session. One patient's enrollments and tasks are replaced in a single transaction, but a full ingest isn't atomic: facts commit first, each patient's results commit separately, and the run date is recorded last.
 
@@ -111,7 +111,7 @@ A `need_type` selects a resolver in [engine/tasks.py](backend/app/engine/tasks.p
 
 ## Ingestion and Growth Path
 
-The CSVs are only the assignment's input. A production system could use the same ingestion boundary with a scheduled extract, vendor API, or sourced from an EHR. An adapter would map incoming data to the existing fact model, keeping the rules independent of its source. This is a possible extension, not part of the current implementation.
+The CSVs are only the assignment's input. A production system could use the same ingestion boundary with a scheduled extract, vendor API, or data sourced from an EHR. An adapter would map incoming data to the existing fact model, keeping the rules independent of its source. This is a possible extension, not part of the current implementation.
 
 The current batch path loads the full CSV dataset and patient-ID list into memory, then queries and writes results one patient at a time. That works for 300 patients, but not for millions of records. Larger backfills should stream and bulk-load facts in bounded batches. Ongoing updates can reevaluate only changed patients.
 
@@ -125,9 +125,9 @@ The React/TypeScript frontend has patient and task views with shared filters. It
 
 ## Decisions and Tradeoffs
 
-| Decision | Benefit for this assignment | Cost or production follow-up |
-|---|---|---|
-| Rules defined in code | Easy to review and test alongside the application. | Rule changes require a deployment. Data-driven rules could change faster, but need validation and audit controls. |
-| Pure rules over immutable domain objects | Deterministic evaluation. Rules don't depend on external dependencies. | Adapters must normalize source semantics. |
-| Program / need / task separation | Programs can be added independently. Needs reuse task-generation logic, and tasks preserve program provenance. | New need types still require a registered resolver. There is no general workflow engine or cross-program deduplication currently. |
-| Sequential patient-level processing | Simple to operate. Each patient's results are replaced atomically. | Per-patient database calls limit throughput. Bounded batches and background workers could reduce repeated I/O and distribute independent evaluations. |
+| Decision                                 | Benefit for this assignment                                                                                    | Cost or production follow-up                                                                                                                          |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rules defined in code                    | Easy to review and test alongside the application.                                                             | Rule changes require a deployment. Data-driven rules could change faster, but need validation and audit controls.                                     |
+| Pure rules over immutable domain objects | Deterministic evaluation. Rules don't depend on external dependencies.                                         | Adapters must normalize source semantics.                                                                                                             |
+| Program / need / task separation         | Programs can be added independently. Needs reuse task-generation logic, and tasks preserve program provenance. | New need types still require a registered resolver. There is no general workflow engine or cross-program deduplication currently.                     |
+| Sequential patient-level processing      | Simple to operate. Each patient's results are replaced atomically.                                             | Per-patient database calls limit throughput. Bounded batches and background workers could reduce repeated I/O and distribute independent evaluations. |
