@@ -1,4 +1,4 @@
-# Clinical Rules Engine: Reviewer Architecture
+# Clinical Rules Engine: Architecture
 
 ## At a Glance
 
