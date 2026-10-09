@@ -27,9 +27,14 @@ docker-compose.yml   Used to stand up the whole stack (API, frontend, Postgres, 
 
 ## Prerequisites
 
-- [uv](https://docs.astral.sh/uv/) (Python) and Python 3.11+
-- Node 24+ (frontend uses Vite; npm is fine — no yarn/pnpm required)
+If running Compose:
+
 - Docker with the Compose plugin (can stand up the stack with the provided Compose file)
+
+Otherwise:
+
+- [uv](https://docs.astral.sh/uv/) and Python 3.11+
+- Node 24+ (frontend uses Vite)
 
 ## Run it
 
